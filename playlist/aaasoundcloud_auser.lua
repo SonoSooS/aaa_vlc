@@ -48,8 +48,8 @@ function probe()
     return false
   end
   
-  local succ, mat = string.match( vlc.path, "(soundcloud%.com/[^/]+)/?([^/]*)$" )
-  return (succ and (mat == nil or mat == "" or mat == "tracks")) and true or false
+  local mat1, mat2 = string.match( vlc.path, "soundcloud%.com/([^/]+)/?([^/]*)$" )
+  return mat1 and (mat1 ~= "tracks" and mat2 == "")
 end
 
 local function tf(s)
@@ -88,55 +88,8 @@ function parse()
     error("No UserID regex'd")
   end
   
-  s, ejj = vlc.stream("https://api.soundcloud.com/users/" .. line .. "/tracks?limit=1024&client_id=" .. cid)
-  if not s then
-    error(ejj)
-  end
-  
-  local buf = {}
-  local cnt = 0
-  line = s:read(1)
-  repeat
-    --print(line)
-    if line then
-      buf[#buf + 1] = line
-      cnt = 0
-    end
-    
-    line = s:read(1)
-    if not line then
-      cnt = cnt + 1
-    end
-  until cnt == 16
-  
-  if not buf[1] then
-    error("================[NO DATA]==============")
-  end
-  
-  line = table.concat(buf)
-  
-  local strr = tf(line)
-  buf = {}
-  for k,v in pairs(strr.main) do
-    buf[#buf + 1 ] =
-    {
-      path = (v.stream_url .. "?client_id=" .. cid),
-      name = v.title,
-      arturl = (v.artwork_url and v.artwork_url or v.user.artwork_url),
-      title = v.title,
-      artist = (v.user.username .. " (" .. v.user.permalink.. ")"),
-      genre = v.genre,
-      copyright = v.license,
-      description = v.description,
-      date = v.created_at,
-      url = v.permalink_url,
-      meta = 
-      {
-        ["tag list"] = v.tag_list,
-        ["creation time"] = v.created_at
-      }
-    }
-  end
-  
-  return buf
+  return
+  {{
+    path = ("https://api-v2.soundcloud.com/stream/users/" .. line .. "?limit=20&offset=0&client_id=" .. cid)
+  }}
 end

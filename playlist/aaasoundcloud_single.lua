@@ -48,6 +48,10 @@ function probe()
     return false
   end
   
+  if string.match(vlc.path, "soundcloud.com/oembed") then
+    return false
+  end
+  
   return string.match( vlc.path, "(soundcloud%.com/[^/]+/[^?/]+)" )
 end
 
@@ -87,41 +91,8 @@ function parse()
     error("No track regex'd")
   end
   
-  s, ejj = vlc.stream("https://api.soundcloud.com/tracks/" .. line .. "?client_id=" .. cid)
-  if not s then
-    error(ejj)
-  end
-  
-  local buf = {}
-  local strr = {}
-  
-  line = s:readline()
-  if not line then
-    error("No line")
-  end
-  
-  strr = tf(line)
-  local v = strr.main
-  if not v then
-    error("No muzik")
-  end
-  
   return
   {{
-    path = (v.stream_url .. "?client_id=" .. cid),
-    name = v.title,
-    arturl = (v.artwork_url and v.artwork_url or v.user.artwork_url),
-    title = v.title,
-    artist = (v.user.username .. " (" .. v.user.permalink.. ")"),
-    genre = v.genre,
-    copyright = v.license,
-    description = v.description,
-    date = v.created_at,
-    url = vlc.access .. "://" .. v.permalink_url,
-    meta = 
-    {
-      ["tag list"] = v.tag_list,
-      ["creation time"] = v.created_at
-    }
+    path = ("https://api-widget.soundcloud.com/tracks?ids=" .. line .. "&format=json&client_id=" .. cid)
   }}
 end

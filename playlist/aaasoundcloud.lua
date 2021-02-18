@@ -27,7 +27,7 @@
 --]]--
 
 -- SoundCloud ClientID
-local cid = "QoSeELR4smhYFoJcsrWJ9N6wgQmoo1Yk"
+local cid = "3QTGpplEzSE4b5LvHHLO7Qs7NndUVXwa"
 
 local json = require("JSON"):new()
 function json.assert(wat, msg)
@@ -40,8 +40,8 @@ end
 
 -- Probe function.
 function probe()
-    return ( vlc.access == "https" or vlc.access == "http" )
-        and string.match( vlc.path, "(soundcloud%.com/[^/]+/sets/[^?/]+)" )
+  return ( vlc.access == "https" or vlc.access == "http" )
+      and string.match( vlc.path, "(soundcloud%.com%/[^/]+%/sets%/[^?/]+)" )
 end
 
 local function tf(s)
@@ -50,6 +50,7 @@ local function tf(s)
   
   t.main, _, ejj = json:decode(s, 1, nil)
   if not t.main then
+    vlc.msg.err(s)
     local _, charnum = ejj:match("column (%d)+")
     charnum = tonumber(charnum)
     vlc.msg.err("================[NO PARSER]================")
@@ -63,14 +64,29 @@ local function tf(s)
   return t
 end
 
+local function shitty_readall(s)
+  local buf = ""
+  
+  while true do
+    local ret = s:read(1024)
+    if ret == nil or ret == 0 then
+      break
+    end
+    
+    buf = buf .. ret
+  end
+  
+  return buf
+end
+
 -- Parse function.
 function parse()
-    local s, ejj = vlc.stream("https://soundcloud.com/oembed?format=json&url=https://" .. vlc.path)
+    local s, ejj = vlc.stream("https://soundcloud.com/oembed?format=json&url=https%3A%2F%2F" .. vlc.path:gsub("/", "%%2F"))
     if not s then
       error(ejj)
     end
     
-    local line = s:readline()
+    local line = shitty_readall(s)
     if not line then
       error("No oembed line")
     end
@@ -80,53 +96,24 @@ function parse()
       error("No track regex'd")
     end
     
-    s, ejj = vlc.stream("https://api.soundcloud.com/playlists/" .. line .. "?client_id=" .. cid)
+    s, ejj = vlc.stream("https://api-widget.soundcloud.com/playlists/" .. line .. "?representation=full&format=json&client_id=" .. cid)
     if not s then
       error(ejj)
     end
     
-    local buf = {}
-    local cnt = 0
-    line = s:read(1)
-    repeat
-      --print(line)
-      if line then
-        buf[#buf + 1] = line
-        cnt = 0
-      end
-      
-      line = s:read(1)
-      if not line then
-        cnt = cnt + 1
-      end
-    until cnt == 4
+    local playlistid = line
     
-    if not buf[1] then
-      error("================[NO DATA]==============")
-    end
+    line = shitty_readall(s)
     
-    line = table.concat(buf)
     strr = tf(line)
     buf = {}
     for k,v in pairs(strr.main.tracks) do
-      buf[#buf + 1 ] =
-      {
-        path = (v.stream_url .. "?client_id=" .. cid),
-        name = v.title,
-        arturl = (v.artwork_url and v.artwork_url or v.user.artwork_url),
-        title = v.title,
-        artist = (v.user.username .. " (" .. v.user.permalink.. ")"),
-        genre = v.genre,
-        copyright = v.license,
-        description = v.description,
-        date = v.created_at,
-        url = vlc.access .. "://" .. v.permalink_url,
-        meta = 
+      if v.id then
+        buf[#buf + 1 ] =
         {
-          ["tag list"] = v.tag_list,
-          ["creation time"] = v.created_at
+          path = ("https://api-widget.soundcloud.com/tracks?ids=" .. v.id .. "&playlistId=" .. playlistid .. "&playlistSecretToken&format=json&client_id=" .. cid)
         }
-      }
+      end
     end
     
     return buf
