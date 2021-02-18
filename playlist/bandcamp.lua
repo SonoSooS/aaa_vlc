@@ -29,7 +29,7 @@
 local json = require("JSON"):new()
 function json.assert(wat, msg)
 	if wat then
-		print(msg)
+		vlc.msg.dbg(msg)
 	else
 		vlc.msg.err(msg)
 	end
@@ -61,37 +61,59 @@ local function tf(s)
   return t
 end
 
+local function shitty_readline(s) -- yay for working around ancient VLC bugs!
+  local buf = ""
+  
+  while true do
+    local ret = s:read(1)
+    if ret == 0 then -- lol, not nil
+      break
+    end
+    
+    if ret == "\r" then
+      ret = s:read(1)
+    end
+    
+    if ret == "\n" then
+      break
+    end
+    
+    buf = buf .. ret
+  end
+  
+  return buf
+end
+
 -- Parse function.
 function parse()
     local line = vlc.readline()
-    while true do
-      if not line then break end
+    while line ~= nil do
       line = line:match("content=\"(https://bandcamp.com/EmbeddedPlayer/[^\"]+)")
-      if line then break end
-      line = vlc.readline()
-    end
-    
-    if line == nil then
-      error("No EmbeddedPlayer!")
-    end
-    
-    local s, ejj = vlc.stream(line)
-    if s == nil then
-      error(ejj)
-    end
-    
-    line = s:readline()
-    while true do
-      if not line then
+      if line then
         break
       end
       
+      line = vlc.readline()
+    end
+    
+    if not line then
+      error("No EmbeddedPlayer!")
+    end
+    
+    vlc.msg.dbg("EmbeddedPlayer: " .. line)
+    local s, ejj = vlc.stream(line)
+    if not s then
+      error(ejj)
+    end
+    
+    line = shitty_readline(s)
+    while line ~= nil do
       line = line:match("var playerdata = (.*);$")
       if line then
         break
       end
       
-      line = s:readline()
+      line = shitty_readline(s)
     end
     
     if not line then
