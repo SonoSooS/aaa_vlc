@@ -2,6 +2,9 @@
 My VLC plugins for playing music directly off of websites
 
 ## Plugins list
+### aaasoundcloud_api
+This is required for all aaasoundcloud plugins due to the API changes to Soundcloud making it very tedious to be able to keep things under a single plugin file.
+
 ### aaasoundcloud
 This is the original plugin for playing Soundcloud sets. It works self-contained for playing sets only.
 
